@@ -159,6 +159,10 @@ cvloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL,
 
  if(length(models)<2) stop("Argument models needs to contain more than one model.")
 
+    # models must be different
+
+ if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
+
 
  cvModels1 <- lapply(1:h, function(h) lapply(models, function(x) StMoMo::cv.StMoMo(x, h = h, data = data, ages.train = ages.fit, years.train = years.fit, returnY = TRUE, Dxt = Dxt, Ext = Ext, ages = ages, years = years)))
 
@@ -227,7 +231,7 @@ bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
 
@@ -318,6 +322,11 @@ bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages
 stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, h = NULL, metalearner = "nnls", normalize = TRUE, saveMetadata =  TRUE)
 
 {
+
+  # check if the supplied models are different
+
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
+
   # check if xtrain and ytrain exist
 
   finalyear <- finalAge <- intialyear <- intialAge <- Dxtlength <-Extlength <- agesLength <- h.prev <- ageLength <- yearLength <-yearsLength <- Datalabel <-Dataseries <-  prevModels <- 0
@@ -372,10 +381,6 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
     # Check if more than one model is supplied
 
     if(length(models)<2) stop("Argument models needs to contain more than one model.")
-
-    # check if the supplied models are different
-
-    if( length(unique(unname(models)))==1) stop("Models must be different.")
 
     # Determine fitting ages and years are specified
 
@@ -778,7 +783,7 @@ mcs <- function(models,  method = "cv", data = NULL, Dxt = NULL, Ext = NULL, age
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check the forecast horizon
 
