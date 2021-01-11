@@ -12,7 +12,7 @@ fitCoMoMo <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NU
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
 
   # Check the forecast horizon
@@ -135,7 +135,7 @@ CoMoMo.default <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check the forecast horizon
 
@@ -217,7 +217,7 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check the forecast horizon
 
@@ -369,7 +369,7 @@ CoMoMo.stack <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = N
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check inputs
 
@@ -514,7 +514,7 @@ CoMoMo.mcs <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check inputs
 
