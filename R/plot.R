@@ -12,7 +12,7 @@
 
 plot.stack <- function(object, ...) {
 
-  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour =model, linetype = model), size = 2) +
+  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour = model, linetype = model), size = 2) +
 
     ggplot2::theme(plot.title = element_text(hjust = 0.5)) + ggplot2::labs(x = "Forecasting Horizon", y = "Weights", title = "Model Weights by Forecasting Horizon")
 
@@ -85,6 +85,8 @@ plot.CoMoMo.mcs <- function(object, ...) {
   return(wplot)
 
 }
+
+
 
 
 
