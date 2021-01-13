@@ -12,7 +12,7 @@ fitCoMoMo <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NU
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
 
   # Check the forecast horizon
@@ -135,7 +135,7 @@ CoMoMo.default <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check the forecast horizon
 
@@ -206,13 +206,18 @@ CoMoMo.default <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit
 
 CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, h = NULL) {
 
+
+  # capture model names
+
+  modelNames <- names(models)
+
   # Check if more than one model is supplied
 
   if(length(models)<2) stop("Argument models needs to contain more than one model.")
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check the forecast horizon
 
@@ -232,8 +237,8 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
    {
 
-    pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
-    tidyr::pivot_longer(cols = bayesian, values_to = "rate", names_to = "model")
+    pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(Bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
+    tidyr::pivot_longer(cols = Bayesian, values_to = "rate", names_to = "model")
 
     allForecast_one <- dplyr::bind_rows(prediction,  pbma)
 
@@ -272,7 +277,7 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
    weight$weights <- weightsDFall
 
-   pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
+   pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(Bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
      tidyr::pivot_longer(cols = Bayesian, values_to = "rate", names_to = "model")
 
    allForecast_one <- dplyr::bind_rows(prediction,  pbma)
@@ -304,7 +309,7 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
      weight$weights <- head(weight$weights, length(models)*h)
 
-     pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
+     pbma <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forbma = log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(Bayesian = exp(sum(forbma)))%>%dplyr::ungroup()%>%
        tidyr::pivot_longer(cols = Bayesian, values_to = "rate", names_to = "model")
 
      allForecast_one <- dplyr::bind_rows(prediction,  pbma)
@@ -354,6 +359,9 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
 CoMoMo.stack <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, h = NULL) {
 
+  # capture model names
+
+  modelNames <- names(models)
 
   # Check if more than one model is supplied
 
@@ -361,7 +369,7 @@ CoMoMo.stack <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = N
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check inputs
 
@@ -445,13 +453,9 @@ else if (max(weight$weights$h) < h)
 
   else if (max(weight$weights$h) > h)
 
-  {
+  {   # forecasting horizon is shorter than the given horizon for weights
 
-    # updates the weights here
-    
-    interval<- h-max(weight$weights$h)
-
-    weight$weights <- head(weight$weights, length(models)*interval)
+    weight$weights <- head(weight$weights, length(models)*h)
 
     pstack <- prediction%>%dplyr::left_join(weight$weights)%>%dplyr::mutate(forstack= log(rate)*weights)%>%dplyr::group_by(ages, year, h)%>%dplyr::summarise(stack = exp(sum(forstack)))%>%dplyr::ungroup()%>%
       tidyr::pivot_longer(cols = stack, values_to = "rate", names_to = "model")
@@ -500,13 +504,17 @@ else if (max(weight$weights$h) < h)
 
 CoMoMo.mcs <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, h = NULL) {
 
+  # capture model names
+
+  modelNames <- names(models)
+
   # Check if more than one model is supplied
 
   if(length(models)<2) stop("Argument models needs to contain more than one model.")
 
   # check if the supplied models are different
 
-  if( length(unique(unname(models)))==1) stop("Models must be different.")
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
 
   # Check inputs
 
