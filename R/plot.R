@@ -10,7 +10,31 @@
 
 #' @export
 
-plot <- function(object, ...) {
+plot.stack <- function(object, ...) {
+
+  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour =model, linetype = model), size = 2) +
+
+    ggplot2::theme(plot.title = element_text(hjust = 0.5)) + ggplot2::labs(x = "Forecasting Horizon", y = "Weights", title = "Model Weights by Forecasting Horizon")
+
+  return(wplot)
+
+}
+
+#' @export
+
+plot.mcs <- function(object, ...) {
+
+  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour = model, linetype = model), size = 2) +
+
+    ggplot2::theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "Weights", title = "Model Weights by Forecasting Horizon")
+
+  return(wplot)
+
+}
+
+#' @export
+
+plot.bma <- function(object, ...) {
 
   wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour = model, linetype = model), size = 2) +
 
@@ -22,11 +46,54 @@ plot <- function(object, ...) {
 
 #' @export
 
-plot <- function(object, ...) {
+plot.CoMoMo.default <- function(object, ...) {
 
-
-  wplot  <- ggplot2::ggplot(object$mse) + ggplot2::geom_line(aes(x = h , y = mse, group = model, colour = model, linetype = model), size = 2) + ggplot2::theme(plot.title = element_text(hjust = 0.5)) + ggplot2::labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
+  wplot  <- ggplot(object$mse) + geom_line(aes(x = h , y = mse, group = model, colour=model, linetype = model), size = 2)+
+     theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
 
   return(wplot)
 
 }
+
+#' @export
+
+plot.CoMoMo.bma <- function(object, ...) {
+
+
+  wplot  <- ggplot( object$mse) + geom_line(aes(x = h , y = mse, group = model, colour = model, linetype = model), size = 2) + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
+
+  return(wplot)
+
+}
+
+#' @export
+
+plot.CoMoMo.stack <- function(object, ...) {
+
+  wplot  <- ggplot(object$mse) + geom_line(aes(x = h , y = mse, group = model, colour = model, linetype = model), size = 2) + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
+
+  return(wplot)
+
+}
+
+#' @export
+
+plot.CoMoMo.mcs <- function(object, ...) {
+
+  wplot  <- ggplot(object$mse) + geom_line(aes(x = h , y = mse, group = model, colour = model, linetype = model), size = 2) + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
+
+  return(wplot)
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
