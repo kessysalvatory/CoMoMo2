@@ -271,7 +271,7 @@ CoMoMo.bma <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
    interval<- h - start
 
-   weightsDF <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(tail(weight$weights, length(models)))), interval), function(x) x%>%dplyr::mutate(model = modelNames)))%>%dplyr::mutate(h=rep(1:interval + start, each=length(models))))[,c("h","weights","model")]
+   weightsDF <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(tail(weight$weights, length(models)))), interval), function(x) x%>%dplyr::mutate(model = names(models))))%>%dplyr::mutate(h=rep(1:interval + start, each=length(models))))[,c("h","weights","model")]
 
    weightsDFall <- rbind(weight$weights, weightsDF)
 
@@ -568,7 +568,7 @@ CoMoMo.mcs <- function(models, data = NULL, weight = NULL, Dxt = NULL, Ext = NUL
 
     interval<- h-start
 
-    weightsDF <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(tail(weight$weights, length(models)))), interval), function(x) x%>%dplyr::mutate(model = modelNames)))%>%dplyr::mutate(h=rep(1:interval + start, each=length(models))))[,c("h","weights","model")]
+    weightsDF <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(tail(weight$weights, length(models)))), interval), function(x) x%>%dplyr::mutate(model = names(models))))%>%dplyr::mutate(h=rep(1:interval + start, each=length(models))))[,c("h","weights","model")]
 
     weightsDFall <- rbind(weight$weights, weightsDF)
 
