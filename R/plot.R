@@ -10,9 +10,9 @@
 
 #' @export
 
-plot <- function(object, ...) {
+plot.weight <- function(object, size = 2, ...) {
 
-  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = weights, group = model, colour =model, linetype = model), size = 2) +
+  wplot <- ggplot2::ggplot(object$weights) + ggplot2::geom_line(aes(x = h, y = model.weights, group = model, colour = model, linetype = model), size = size) +
 
     ggplot2::theme(plot.title = element_text(hjust = 0.5)) + ggplot2::labs(x = "Forecasting Horizon", y = "Weights", title = "Model Weights by Forecasting Horizon")
 
@@ -21,15 +21,14 @@ plot <- function(object, ...) {
 }
 
 
-#' @export
 
-plot <- function(object, ...) {
 
-  wplot  <-  ggplot2::ggplot(object$mse) +  ggplot2::geom_line(aes(x = h , y = mse, group = model, colour = model, linetype = model), size = 2) +  ggplot2::theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Forecasting Horizon", y = "MSE", title = "Mean Square Error by Forecasting Horizon")
 
-  return(wplot)
 
-}
+
+
+
+
 
 
 
