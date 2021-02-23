@@ -1,4 +1,4 @@
-#' @title Weights estimation using different methods.
+#' @title Weights estimation using different model combinations methods.
 #'
 #' @description We consider four different model combination approaches:
 #'  Simple Model Averaging, Bayesian Model Averaging, Model Confidence Set,
@@ -16,7 +16,7 @@
 #' multiple base learners using the weights that optimize a
 #' cross-validation criterion.
 #'
-#' @param models is the specified models to be combined.
+#' @param models are the specified models to be combined.
 #'
 #' @param h number of years for forecasting horizon.
 #'
@@ -46,20 +46,7 @@
 #'
 #' @param years.fit optional vector of years to include in the
 #' training. Must be a subset of \code{years}.
-#'
-#' @param holdout optional scalar of number of years withheld to calculate the projection bias.
-#' Must be a subset of \code{years}.
-#'
-#' @param method optional paramater specifying how the models are trained. Cross-validation (cv) is default option
-#' Single-validation (sv) option can also be specified.
-#'
-#' @return Returns an object of class \code{bma} with the following components:
-#'
-#' \item{Weights}{Returns the combination weights for different horizon.}
-#'
-#' \item{Method}{Returns the trainining method either cv or sv.}
-#'
-#'  @examples weights <- bma(modlist, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, method = "cv")
+
 
 #' @export
 
@@ -68,11 +55,15 @@ valloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL
 {
   # Check the forecast horizon
 
-  if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
+  if (h<0 || h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
 
   # Check if more than one model is supplied
 
   if(length(models)<2) stop("Argument models needs to contain more than one model.")
+
+  # Assign models names
+
+  if (is.null(names(models))) stop("Assign names to the models")
 
   # Determine fitting ages and years are specified
 
@@ -118,6 +109,44 @@ cvloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL,
 
 {
 
+
+  # Check the forecast horizon
+
+  if (h<0 || h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
+
+  # Check if more than one model is supplied
+
+  if(length(models)<2) stop("Argument models needs to contain more than one model.")
+
+  # models must be different
+
+  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
+
+  # Assign models names
+
+  if (is.null(names(models))) stop("Assign names to the models")
+
+  # Determine fitting ages and years are specified
+
+  if(!is.null(data)) {
+    if (class(data) != "StMoMoData") {
+      stop("Argument data needs to be of class StMoMoData.")
+    }
+
+    ages <- data$ages
+    years <- data$years
+
+  } else {
+    if (is.null(Dxt) || is.null(Ext)) {
+      stop("Either argument data or arguments Dxt and Ext need to be provided.")
+    }
+    if (is.null(ages)) ages <- 1:nrow(Dxt)
+    if (is.null(years)) years <- 1:ncol(Dxt)
+  }
+
+  if (is.null(ages.fit)) ages.fit <- ages
+  if (is.null(years.fit)) years.fit <- years
+
   # names of specified models
 
   Specified_Models <- lapply(1:length(models), function(x) names(models[x]))
@@ -151,18 +180,6 @@ cvloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL,
 
   } else {
 
-       # Check the forecast horizon
-
- if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
-
-  # Check if more than one model is supplied
-
- if(length(models)<2) stop("Argument models needs to contain more than one model.")
-
-    # models must be different
-
- if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
-
 
  cvModels1 <- lapply(1:h, function(h) lapply(models, function(x) StMoMo::cv.StMoMo(x, h = h, data = data, ages.train = ages.fit, years.train = years.fit, returnY = TRUE, Dxt = Dxt, Ext = Ext, ages = ages, years = years)))
 
@@ -178,7 +195,6 @@ cvloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL,
  }
 
  naRows <- lapply(1:length(1:h), function(x) which(is.na(rowSums(xtrain[[x]]))))
-
 
 }
 
@@ -211,31 +227,47 @@ cvloss <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL,
 
   cverr<-  lapply(1:length(1:h), function(x) data.frame(h = x, cv = dplyr::bind_rows(cvmse[[x]])))
 
-  CVerror <- dplyr::bind_rows(lapply(cverr, function(x) x %>%dplyr::mutate(model = unlist(Specified_Models))))
+  CVerror0 <- dplyr::bind_rows(lapply(cverr, function(x) x %>%dplyr::mutate(model = unlist(Specified_Models))))
+
+  CVerror <-  CVerror0 %>% dplyr::rename(model.cvmse ="cv.mse")
 
   cvloss <- lapply(1:length(1:h), function(x)  log(Forecasts_mcs[[x]]) - log(obsRatesDF4[[x]]))
 
   out <- list(cvloss = cvloss, CVE =  CVerror, cvModels = cvModels1, cvmse = cvmse, cvRates = cvRates1,  xtrain =  xtrain, naRows = naRows, ytrain = ytrain)
 }
 
-
+#' @param holdout optional scalar of number of years withheld to calculate the projection bias.
+#' Must be a subset of \code{years}.
+#'
+#' @param method optional paramater specifying how the models are trained. Cross-validation (cv) is default option
+#' Single-validation (sv) option can also be specified.
+#'
+#' @return Returns an object of class \code{CoMoMo} with the following components:
+#'
+#' \item{weights}{Returns the combination weights for different horizons.}
+#'
+#' \item{cvmse}{Returns the cross-validation errors for each method for different horizons.}
+#'
+#' \item{comb.method}{Returns the combination method}
+#'
+#' \item{method}{Returns the trainining method either cv or sv.}
+#'
+#' @examples
+#'
+#' # define models
+#'
+#' LC <- lc()
+#' APC <- apc()
+#' modlist <- list("LC"= LC, "APC" = APC)
+#'
+#' weight_bma <- bma(modlist, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, method = "cv")
+#'
+#'
 #' @export
 
 bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, holdout = round(length(years.fit)/3,0), h = NULL)
 
 {
-
-  # Check if more than one model is supplied
-
-  if(length(models)<2) stop("Argument models needs to contain more than one model.")
-
-  # check if the supplied models are different
-
-  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
-
-  if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
-
-  Specified_Models <- lapply(1:length(models), function(x) names(models[x]))
 
   if ( holdout < round(length(years.fit)/3,0))
   {
@@ -244,6 +276,8 @@ bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages
 
 
   if (method!="cv" && method!="sv") stop("This is undefined method")
+
+  Specified_Models <- lapply(1:length(models), function(x) names(models[x]))
 
   if (method == "cv")
 
@@ -255,11 +289,11 @@ bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages
 
     out <- dplyr::bind_rows(lapply(weights_bma, function(x) x %>%dplyr::mutate(model = unlist(Specified_Models))))
 
-    output <- out%>%dplyr::rename(weights = cv.mse)
+    output <- out%>%dplyr::rename(model.weights = cv.mse)
 
-    result <- list(weights = output, method = "cv", cvmse =  output0$CVE)
+    result <- list(weights = output, method = "cv", cvmse =  output0$CVE, comb.method = "BMA")
 
-    class(result) <- "bma"
+    class(result)<- "weight"
 
     return(result)
   }
@@ -287,38 +321,51 @@ bma <- function(models, method = "cv", data = NULL, Dxt = NULL, Ext = NULL, ages
 
     output <- (dplyr::bind_rows(lapply(rep(list(weights_bma), h), function(x) x %>%dplyr::mutate(model = Specified_Models)))%>%dplyr::mutate(h = rep(1:h, each=length(Specified_Models))))[, c("h","mae","model")]
 
-    colnames(output) <- c("h","weights", "model")
+    colnames(output) <- c("h","model.weights", "model")
 
     output$model <- factor(output$model, levels = Specified_Models, labels = Specified_Models)
 
-    res <- list(weights = output, method = "sv")
+    res <- list(weights = output, method = "sv", comb.method = "BMA")
 
-    class(res) <- "bma"
+    class(res) <- "weight"
 
     return(res)
 
   }
 }
 
-#' @export
 #'
 #' @param metalearner a supervised machine learning algorithm for learning the weights in the stacked regression ensemble.
-#'
 #' Default option is non-negative least square regression (nnls)
-#'
 #' Other options are standard linear regression (Linear), lasso regression (Lasso)
-#'
 #' Ridge regression (Ridge) and Elastic net (Elastic)
 #'
-#' @return Returns an object of class \code{stack} with the following components:
+#' @param normalize allows the user to specify if the weights are to sum to one or not. The default option normalize = TRUE
+#' makes all the weights sum to a unit, otherwise when normalize = FALSE the weights do not sum to one.
 #'
-#' \item{Weights}{Returns the combination weights for different horizon.}
+#' @param saveMetadata allows the user to save the cross-validation data that can be reused when a new meta-learner is used.
+#' If the user sets saveMetadata = TRUE the cross-validation data will be saved and when the new meta-learner is used,
+#' it takes almost no time to run. When saveMetadata = FALSE no data is saved.
 #'
-#' \item{Method}{Returns the meta-learner used to learn the weights.}
+#' @return Returns an object of class \code{CoMoMo} with the following components:
 #'
-#' @examples weights <- stack(modlist, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, metalearner = "nnls")
-
-
+#' \item{Weights}{Returns the combination weights for different horizons.}
+#' \item{metalearner}{Returns the meta-learner used to learn the weights.}
+#' \item{cvmse}{Returns the cross-validation errors for each method for different horizons.}
+#' \item{comb.method}{Returns the combination method}
+#'
+#' @examples
+#'
+#' # define models
+#'
+#' LC <- lc()
+#' APC <- apc()
+#' modlist <- list("LC"= LC, "APC" = APC)
+#'
+#' weight_stack <- stack(models, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, metalearner = "nnls")
+#'
+#' @export
+#'
 stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, years.fit = NULL, ages = NULL, years = NULL, h = NULL, metalearner = "nnls", normalize = TRUE, saveMetadata =  TRUE)
 
 {
@@ -356,7 +403,7 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
     # Check the forecast horizon
 
-    if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
+    if (h<0 || h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
 
     h.prev <- h ; prevModels <- models
 
@@ -381,6 +428,10 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
     # Check if more than one model is supplied
 
     if(length(models)<2) stop("Argument models needs to contain more than one model.")
+
+    # Assign models names
+
+    if (is.null(names(models))) stop("Assign names to the models")
 
     # Determine fitting ages and years are specified
 
@@ -456,13 +507,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_ridge <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]/sum(coeffients[[x]])))
 
-      weights1_ridge <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_ridge[[x]]))
+      weights1_ridge <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_ridge[[x]]))
 
       weightsDF_ridge <- dplyr::bind_rows(lapply(weights1_ridge, function(x) x %>%dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_ridge, metalearner = "Ridge", cvmse =  CVerror)
+      result <- list(weights =  weightsDF_ridge, metalearner = "Ridge", cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -482,13 +533,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_lasso <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]/sum(coeffients[[x]])))
 
-      weights1_lasso <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_lasso[[x]]))
+      weights1_lasso <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_lasso[[x]]))
 
       weightsDF_lasso <- dplyr::bind_rows(lapply(weights1_lasso, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_lasso, metalearner = "Lasso", cvmse =  CVerror)
+      result <- list(weights =  weightsDF_lasso, metalearner = "Lasso", cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -508,13 +559,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_elastic <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]/sum(coeffients[[x]])))
 
-      weights1_elastic <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_elastic[[x]]))
+      weights1_elastic <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_elastic[[x]]))
 
       weightsDF_elastic <- dplyr::bind_rows(lapply(weights1_elastic, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_elastic, metalearner = "Elastic",  cvmse =  CVerror)
+      result <- list(weights =  weightsDF_elastic, metalearner = "Elastic",  cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -530,13 +581,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_nnls <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]/sum(coeffients[[x]])))
 
-      weights1_nnls <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_nnls[[x]]))
+      weights1_nnls <-  lapply(1:length(1:h), function(x) data.frame(h = x,  model.weights = weights_nnls[[x]]))
 
       weightsDF_nnls <- dplyr::bind_rows(lapply(weights1_nnls, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights = weightsDF_nnls, metalearner = "nnls", cvmse =  CVerror)
+      result <- list(weights = weightsDF_nnls, metalearner = "nnls", cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -558,13 +609,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_linear <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]/sum(coeffients[[x]])))
 
-      weights1_linear <- lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_linear[[x]]))
+      weights1_linear <- lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_linear[[x]]))
 
       weightsDF_linear <- dplyr::bind_rows(lapply(weights1_linear, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights = weightsDF_linear,  metalearner = "Linear",  cvmse =  CVerror)
+      result <- list(weights = weightsDF_linear,  metalearner = "Linear",  cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -590,13 +641,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_ridge <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]))
 
-      weights1_ridge <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_ridge[[x]]))
+      weights1_ridge <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_ridge[[x]]))
 
       weightsDF_ridge <- dplyr::bind_rows(lapply(weights1_ridge, function(x) x %>%dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_ridge, metalearner = "Ridge",  cvmse =  CVerror)
+      result <- list(weights =  weightsDF_ridge, metalearner = "Ridge",  cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -616,13 +667,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_lasso <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]))
 
-      weights1_lasso <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_lasso[[x]]))
+      weights1_lasso <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_lasso[[x]]))
 
       weightsDF_lasso <- dplyr::bind_rows(lapply(weights1_lasso, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_lasso, metalearner = "Lasso", cvmse =  CVerror)
+      result <- list(weights =  weightsDF_lasso, metalearner = "Lasso", cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -642,13 +693,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_elastic <-lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]))
 
-      weights1_elastic <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_elastic[[x]]))
+      weights1_elastic <-  lapply(1:length(1:h), function(x) data.frame(h = x, model.weights = weights_elastic[[x]]))
 
       weightsDF_elastic <- dplyr::bind_rows(lapply(weights1_elastic, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights =  weightsDF_elastic, metalearner = "Elastic", cvmse =  CVerror)
+      result <- list(weights =  weightsDF_elastic, metalearner = "Elastic", cvmse =  CVerror,comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
     }
@@ -663,13 +714,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_nnls <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]))
 
-      weights1_nnls <-  lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_nnls[[x]]))
+      weights1_nnls <-  lapply(1:length(1:h), function(x) data.frame(h = x,  model.weights = weights_nnls[[x]]))
 
       weightsDF_nnls <- dplyr::bind_rows(lapply(weights1_nnls, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights = weightsDF_nnls, metalearner = "nnls", cvmse =  CVerror)
+      result <- list(weights = weightsDF_nnls, metalearner = "nnls", cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -691,13 +742,13 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
       weights_linear <- lapply(1:length(1:h), function(x) as.matrix(coeffients[[x]]))
 
-      weights1_linear <- lapply(1:length(1:h), function(x) data.frame(h = x, weights = weights_linear[[x]]))
+      weights1_linear <- lapply(1:length(1:h), function(x) data.frame(h = x,  model.weights = weights_linear[[x]]))
 
       weightsDF_linear <- dplyr::bind_rows(lapply(weights1_linear, function(x) x %>% dplyr::mutate(model = unlist(Specified_Models))))
 
-      result <- list(weights = weightsDF_linear, metalearner = "Linear",  cvmse =  CVerror)
+      result <- list(weights = weightsDF_linear, metalearner = "Linear",  cvmse =  CVerror, comb.method = "stack")
 
-      class(result) <- "stack"
+      class(result) <- "weight"
 
       return(result)
 
@@ -707,24 +758,32 @@ stack <- function(models, data = NULL, Dxt = NULL, Ext = NULL, ages.fit = NULL, 
 
 }
 
-#' @export
 #'
-#' @param alpha is the level of the test
+#' @param alpha is the level of the test with the default value of alpha = 0.1.
 #'
-#' @param B is the bootstrap samples.
+#' @param B is the bootstrap samples with default sample of B = 5000.
 #'
-#' @param l is the block length.
+#' @param l is the block length with the default value of l=3.
 #'
-#' @return Returns an object of class \code{mcs} with the following components:
+#' @return Returns an object of class \code{CoMoMo} with the following components:
 #'
-#' \item{Weights}{Returns the combination weights for different horizon.}
-#'
-#' \item{Method}{Returns the trainining method either cv or sv.}
-#'
+#' \item{weights}{Returns the combination weights for different horizons.}
+#' \item{cvmse}{Returns the cross-validation errors for each method for different horizons.}
+#' \item{comb.method}{Returns the combination method}
+#' \item{method}{Returns the trainining method either cv or sv.}
 #' \item{Selected models}{Returns the superior models selected.}
 #'
-#'  @examples weights <- mcs(modlist, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, B = 5000, l=3, alpha = 0.1,  method = "cv")
+#' @examples
 #'
+#' # define models
+#'
+#' LC <- lc()
+#' APC <- apc()
+#' modlist <- list("LC"= LC, "APC" = APC)
+#'
+#' weight_mcs <- mcs(modlist, data = DataStMoMo, ages.fit = agesFit, years.fit = yearsFit, h = 5, method = "cv")
+#'
+#' @export
 
 mc <- function(Loss, B, l){
 
@@ -734,12 +793,15 @@ mc <- function(Loss, B, l){
   if(any(is.na(Loss))) stop("NAs in Loss are not allowed")
   if(any(abs(Loss) == Inf)) stop("Inf in Loss are not allowed")
 
-  LbarB <- boot::tsboot(Loss, colMeans, R = B, sim = "fixed",l = l)$t
+  LbarB <- boot::tsboot(Loss, colMeans, R = B, sim = "fixed", l = l)$t
   Lbar <- colMeans(Loss)
   zeta.Bi <- t(t(LbarB)-Lbar)
   save.res <- c()
 
-  for(j in 1:(ncol(Loss) - 1)){
+  for(j in 1:(ncol(Loss) - 1))
+
+    {
+
     Lbardot <- mean(Lbar)
     zetadot <- rowMeans(zeta.Bi)
     vard <- colMeans((zeta.Bi-zetadot)^2)
@@ -753,6 +815,7 @@ mc <- function(Loss, B, l){
     names(save.res)[j] <- names(model.t.max)
     Lbar <- Lbar[-model.t.max]
     zeta.Bi <- zeta.Bi[,-model.t.max]
+
   }
 
   save.res <- c(save.res,1)
@@ -777,18 +840,6 @@ mcs <- function(models,  method = "cv", data = NULL, Dxt = NULL, Ext = NULL, age
 
 {
 
-  # Check if more than one model is supplied
-
-  if(length(models)<2) stop("Argument models needs to contain more than one model.")
-
-  # check if the supplied models are different
-
-  if(length(unique(unname(models))) < length(models)) stop("Models must be different.")
-
-  # Check the forecast horizon
-
-  if (h>0 && h!= as.integer(h)) stop("The forecast horizon h must be a positive integer.")
-
   if ( holdout < round(length(years.fit)/3,0))
   {
     cat(paste("Warning: holdout is small \n"))
@@ -799,7 +850,6 @@ mcs <- function(models,  method = "cv", data = NULL, Dxt = NULL, Ext = NULL, age
     cat(paste("Warning: B is small \n"))
   }
 
-  modelNames <- names(models)
 
   if (method!="cv" && method!="sv") stop("This is undefined method")
 
@@ -829,18 +879,18 @@ mcs <- function(models,  method = "cv", data = NULL, Dxt = NULL, Ext = NULL, age
 
     selected <- which(MCS_vald>alpha)
 
-    weights <- c()
+    model.weights <- c()
 
-    for (model in modelNames) {
-      if (model %in% modelNames[selected]) {weights = c(weights, 1/length(modelNames[selected])) } else {weights = c(weights, 0)}
+    for (model in names(models)) {
+      if (model %in% names(models)[selected]) {model.weights = c(model.weights, 1/length( names(models)[selected])) } else {model.weights = c(model.weights, 0)}
 
     }
 
-    out <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(weights)), h), function(x) x%>%dplyr::mutate(model = modelNames)))%>%dplyr::mutate(h = rep(1:h, each = length(models))))[,c("h","weights","model")]
+    out <- (dplyr::bind_rows(lapply(rep(list(as.data.frame(model.weights)), h), function(x) x%>%dplyr::mutate(model = names(models))))%>%dplyr::mutate(h = rep(1:h, each = length(models))))[,c("h","model.weights","model")]
 
-    res <- list(weights = out,  method = "sv", selected =  selected)
+    res <- list(weights = out, method = "sv", selected =  selected, comb.method = "MCS")
 
-    class(res) <- "mcs"
+    class(res) <- "weight"
 
     return(res)
 
@@ -855,23 +905,23 @@ mcs <- function(models,  method = "cv", data = NULL, Dxt = NULL, Ext = NULL, age
 
     selected <- lapply(MCS_cv, function(x)  which(x > alpha))
 
-    weights <- c()
+    model.weights <- c()
 
     for (i in 1:length(1:h))
 
     {
-      for (model in modelNames) {
-        if (model %in% modelNames[selected[[i]]]) {weights = c(weights, 1/length(modelNames[selected[[i]]])) } else {weights = c(weights,0)
+      for (model in  names(models)) {
+        if (model %in%  names(models)[selected[[i]]]) {model.weights = c( model.weights, 1/length( names(models)[selected[[i]]])) } else { model.weights = c(model.weights, 0)
 
         }
       }
     }
 
-    output <- data.frame(h = rep(1:length(1:h), each = length(modelNames)), weights, model = rep(unlist(modelNames)), stringsAsFactors = F)
+    output <- data.frame(h = rep(1:length(1:h), each = length(models)),  model.weights, model = rep(unlist(names(models))), stringsAsFactors = F)
 
-    result <- list(weights = output, method = "cv", selected =  selected,  cvmse =  output0$CVE)
+    result <- list(weights = output, method = "cv", selected =  selected,  cvmse =  output0$CVE, comb.method = "MCS")
 
-    class(result) <- "mcs"
+    class(result) <- "weight"
 
     return(result)
 
